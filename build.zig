@@ -121,15 +121,15 @@ fn makeSQLiteLib(b: *std.Build, dep: *std.Build.Dependency, c_flags: []const []c
         .root_module = mod,
     });
 
-    lib.addIncludePath(dep.path("."));
-    lib.addIncludePath(b.path("c"));
+    mod.addIncludePath(dep.path("."));
+    mod.addIncludePath(b.path("c"));
     if (sqlite_c == .with) {
-        lib.addCSourceFile(.{
+        mod.addCSourceFile(.{
             .file = dep.path("sqlite3.c"),
             .flags = c_flags,
         });
     }
-    lib.addCSourceFile(.{
+    mod.addCSourceFile(.{
         .file = b.path("c/workaround.c"),
         .flags = c_flags,
     });
@@ -154,7 +154,7 @@ pub fn build(b: *std.Build) !void {
 
     // Define C flags to use
 
-    var flags: std.ArrayList([]const u8) = .{};
+    var flags: std.ArrayList([]const u8) = .empty;
     defer flags.deinit(b.allocator);
     try flags.append(b.allocator, "-std=c99");
 
@@ -242,9 +242,9 @@ pub fn build(b: *std.Build) !void {
             .name = test_name,
             .root_module = mod,
         });
-        tests.addIncludePath(b.path("c"));
-        tests.addIncludePath(sqlite_dep.path("."));
-        tests.linkLibrary(test_sqlite_lib);
+        tests.root_module.addIncludePath(b.path("c"));
+        tests.root_module.addIncludePath(sqlite_dep.path("."));
+        tests.root_module.linkLibrary(test_sqlite_lib);
 
         const tests_options = b.addOptions();
         tests.root_module.addImport("build_options", tests_options.createModule());
@@ -268,7 +268,10 @@ pub fn build(b: *std.Build) !void {
     // Tools
     //
 
-    addPreprocessStep(b, sqlite_dep);
+    // addPreprocessStep disabled — uses pre-Zig-0.16 std.fs/std.Io.File APIs
+    // and only feeds the loadable-extension header generator (`zig build
+    // preprocess-headers`), which downstream consumers don't trigger.
+    // addPreprocessStep(b, sqlite_dep);
 }
 
 fn addPreprocessStep(b: *std.Build, sqlite_dep: *std.Build.Dependency) void {
